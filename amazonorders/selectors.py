@@ -125,8 +125,11 @@ class Selectors:
     ORDER_SKIP_TOTALS = [
         # Identifies a cancelled order on the history page
         Selector("div.yohtmlc-shipment-status-primaryText", "Cancelled"),
+        Selector("div.yohtmlc-shipment-status-primaryText", "Service cancelled"),
         # Identifies a cancelled order on the details page
-        Selector("h4.a-alert-heading", text_contains="cancelled")
+        Selector("h4.a-alert-heading", text_contains="cancelled"),
+        # Identifies a cancelled order on the details page of e.g. amazon.de
+        Selector("h4.od-status-message", "Cancelled")
     ]
 
     #####################################
@@ -191,6 +194,10 @@ class Selectors:
                                         "div:is(.a-span3, .a-span12)"]
     FIELD_ORDER_PAYMENT_METHOD_SELECTOR = "img.pmts-payment-credit-card-instrument-logo"
     FIELD_ORDER_PAYMENT_METHOD_LAST_4_SELECTOR = "span:has(img.pmts-payment-credit-card-instrument-logo):last-child"
+    # Payment methods rendered as a list of instruments (e.g. on amazon.de)
+    FIELD_ORDER_PAYMENT_INSTRUMENT_SELECTOR = "[data-testid='payment-instrument']"
+    FIELD_ORDER_PAYMENT_INSTRUMENT_NAME_SELECTOR = "[data-testid='payment-instrument-name']"
+    FIELD_ORDER_PAYMENT_INSTRUMENT_NUMBER_SELECTOR = "[data-testid='payment-instrument-number']"
     FIELD_ORDER_SUBTOTALS_TAG_ITERATOR_SELECTOR = ["[data-component='orderSubtotals'] div.a-row",
                                                    "div#od-subtotals div.a-row",
                                                    "[data-component='chargeSummary'] div.od-line-item-row"]
@@ -227,6 +234,8 @@ class Selectors:
     FIELD_RECIPIENT_ADDRESS_COUNTRY_SELECTOR = "li.displayAddressCountryName"
     FIELD_RECIPIENT_ADDRESS_FALLBACK_SELECTOR = ["div:nth-child(2)",
                                                  "li:nth-child(2)"]
+    # The address lines that follow the Recipient's name in an unclassed list (e.g. on amazon.de details pages)
+    FIELD_RECIPIENT_ADDRESS_LINES_SELECTOR = "ul > li:not(:first-child)"
 
     #####################################
     # CSS selectors for Seller fields
@@ -241,6 +250,8 @@ class Selectors:
 
     TRANSACTION_HISTORY_FORM_SELECTOR = "form:has(input[name='ppw-widgetState'])"
     TRANSACTION_HISTORY_CONTAINER_SELECTOR = ".pmts-portal-component"
+    # Transactions embedded as JSON in a Next.js page (e.g. on amazon.de)
+    TRANSACTION_HISTORY_NEXT_DATA_SELECTOR = "script#__NEXT_DATA__"
     TRANSACTION_DATE_CONTAINERS_SELECTOR = "div.apx-transaction-date-container"
     TRANSACTIONS_CONTAINER_SELECTOR = "div"
     TRANSACTIONS_SELECTOR = "div.apx-transactions-line-item-component-container:has(*)"

@@ -35,6 +35,7 @@ _REGION_LANGUAGES = {
     "ca": "en-CA,en;q=0.9,en-US;q=0.8",
     "co.uk": "en-GB,en;q=0.9,en-US;q=0.8",
     "com.au": "en-AU,en;q=0.9,en-US;q=0.8",
+    "de": "en-GB,en;q=0.9,en-US;q=0.8",
     "in": "en-IN,en;q=0.9,en-US;q=0.8",
     "sg": "en-SG,en;q=0.9,en-US;q=0.8",
 }
@@ -46,6 +47,7 @@ _REGION_LANGUAGES = {
 _REGION_CURRENCIES = {
     "co.uk": "£",
     "co.jp": "¥",
+    "de": "€",
     "in": "₹",
     "sg": "S$",
 }
@@ -69,6 +71,13 @@ _REGION_ASSOC_HANDLES = {
 #: The cookie that marks an authenticated session on regional Amazon sites, keyed by the TLD
 #: suffix that follows ``amazon.``. Applied only when ``COOKIES_SET_WHEN_AUTHENTICATED`` still
 #: has the default ``x-main``, so a ``constants_class`` override wins. Unknown TLDs keep the default.
+#: Cookies that select the English version of Amazon sites whose default language is not English,
+#: keyed by the TLD suffix that follows ``amazon.``. Applied only when ``LANGUAGE_COOKIES`` still
+#: has the default (empty) value, so a ``constants_class`` override wins. Unknown TLDs set none.
+_REGION_LANGUAGE_COOKIES = {
+    "de": {"lc-acbde": "en_GB"},
+}
+
 _REGION_AUTH_COOKIES = {
     "ca": "x-acbca",
     "co.jp": "x-acbjp",
@@ -99,11 +108,11 @@ class Constants:
         config = AmazonOrdersConfig(data={"constants_class": "my_module.MyConstants"})
 
     URLs and the URL-shaped headers (``Origin``, ``Host``, ``Referer``) are derived from the active
-    Amazon domain. ``Accept-Language``, ``CURRENCY_SYMBOL``, the sign-in ``openid.assoc_handle``, and
-    ``COOKIES_SET_WHEN_AUTHENTICATED`` are adjusted for a small set of known TLDs (``CURRENCY_SYMBOL``
-    only when ``AMAZON_CURRENCY_SYMBOL`` is unset; ``openid.assoc_handle`` and
-    ``COOKIES_SET_WHEN_AUTHENTICATED`` only when a subclass has not overridden them). The domain is
-    resolved in this precedence order:
+    Amazon domain. ``Accept-Language``, ``CURRENCY_SYMBOL``, the sign-in ``openid.assoc_handle``,
+    ``COOKIES_SET_WHEN_AUTHENTICATED``, and ``LANGUAGE_COOKIES`` are adjusted for a small set of known TLDs
+    (``CURRENCY_SYMBOL`` only when ``AMAZON_CURRENCY_SYMBOL`` is unset; ``openid.assoc_handle``,
+    ``COOKIES_SET_WHEN_AUTHENTICATED``, and ``LANGUAGE_COOKIES`` only when a subclass has not overridden
+    them). The domain is resolved in this precedence order:
 
     1. The ``domain`` key on :class:`~amazonorders.conf.AmazonOrdersConfig`.
     2. The ``AMAZON_BASE_URL`` environment variable.
@@ -151,6 +160,10 @@ class Constants:
 
     TRANSACTION_HISTORY_ROUTE = "/cpe/yourpayments/transactions"
     TRANSACTION_HISTORY_URL = f"{BASE_URL}{TRANSACTION_HISTORY_ROUTE}"
+    #: The internal API that loads further pages of Transactions on sites that render the Transactions page from
+    #: embedded JSON (e.g. amazon.de).
+    TRANSACTION_HISTORY_API_ROUTE = "/payments-portal/data/iris/live/v1/data/manage/get-transactions"
+    TRANSACTION_HISTORY_API_URL = f"{BASE_URL}{TRANSACTION_HISTORY_API_ROUTE}"
 
     ##########################################################################
     # Headers
@@ -179,6 +192,9 @@ class Constants:
     ##########################################################################
 
     COOKIES_SET_WHEN_AUTHENTICATED = ["x-main"]
+    #: Cookies sent with every request, e.g. to select the English version of a site whose default language
+    #: is not English (``lc-acbde=en_GB`` on amazon.de).
+    LANGUAGE_COOKIES: Dict[str, str] = {}
     JS_ROBOT_TEXT_REGEX = r"[.\s\S]*verify that you're not a robot[.\s\S]*Enable JavaScript[.\s\S]*"
     GOKU_PROPS_REGEX = r"window\.gokuProps\s*=\s*(\{.*?\});"
     ACIC_CHALLENGE_PATH = "/ax/aaut/verify/ap/challenge"
@@ -260,6 +276,7 @@ class Constants:
         self.ORDER_DETAILS_URL = f"{base_url}/gp/your-account/order-details"
         self.ORDER_INVOICE_URL = f"{base_url}/gp/css/summary/print.html"
         self.TRANSACTION_HISTORY_URL = f"{base_url}{self.TRANSACTION_HISTORY_ROUTE}"
+        self.TRANSACTION_HISTORY_API_URL = f"{base_url}{self.TRANSACTION_HISTORY_API_ROUTE}"
 
         headers = dict(vars(self).get("BASE_HEADERS", type(self).BASE_HEADERS))
         headers["Origin"] = base_url
@@ -275,6 +292,9 @@ class Constants:
         if (tld in _REGION_AUTH_COOKIES and
                 type(self).COOKIES_SET_WHEN_AUTHENTICATED == Constants.COOKIES_SET_WHEN_AUTHENTICATED):
             self.COOKIES_SET_WHEN_AUTHENTICATED = [_REGION_AUTH_COOKIES[tld]]
+
+        if tld in _REGION_LANGUAGE_COOKIES and type(self).LANGUAGE_COOKIES == Constants.LANGUAGE_COOKIES:
+            self.LANGUAGE_COOKIES = dict(_REGION_LANGUAGE_COOKIES[tld])
 
     def format_currency(self,
                         amount: float) -> str:
