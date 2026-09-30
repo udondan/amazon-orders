@@ -105,7 +105,7 @@ class Order(Parsable):
         #: The Order subtotal. Only populated when ``full_details`` is ``True``.
         self.subtotal: Optional[float] = self._if_full_details(self._parse_subtotal())
         #: The Order shipping total. Only populated when ``full_details`` is ``True``.
-        self.shipping_total: Optional[float] = self._if_full_details(self._parse_currency("shipping"))
+        self.shipping_total: Optional[float] = self._if_full_details(self._parse_shipping_total())
         #: The Order free shipping. Only populated when ``full_details`` is ``True``.
         self.free_shipping: Optional[float] = self._if_full_details(self._parse_currency("free shipping"))
         #: The Order promotion applied. Only populated when ``full_details`` is ``True``.
@@ -217,8 +217,26 @@ class Order(Parsable):
         if self.is_whole_foods:
             return self.safe_simple_parse(
                 selector=self.config.selectors.FIELD_ORDER_WHOLE_FOODS_PAYMENT_METHOD_SELECTOR)
-        return self.safe_simple_parse(selector=self.config.selectors.FIELD_ORDER_PAYMENT_METHOD_SELECTOR,
-                                      attr_name="alt")
+        value = self.safe_simple_parse(selector=self.config.selectors.FIELD_ORDER_PAYMENT_METHOD_SELECTOR,
+                                       attr_name="alt")
+        if value is None:
+            value = self.safe_parse(self._parse_payment_instrument_field,
+                                    selector=self.config.selectors.FIELD_ORDER_PAYMENT_INSTRUMENT_NAME_SELECTOR)
+        return value
+
+    def _parse_payment_instrument_field(self,
+                                        selector: str) -> Optional[str]:
+        # Payment methods rendered as a list of instruments (e.g. on amazon.de). When a Gift Card was used
+        # alongside a card, prefer the card (the instrument with a number), as other sites render only the card here
+        instruments = util.select(self.parsed, self.config.selectors.FIELD_ORDER_PAYMENT_INSTRUMENT_SELECTOR)
+        numbered = [instrument for instrument in instruments if util.select_one(
+            instrument, self.config.selectors.FIELD_ORDER_PAYMENT_INSTRUMENT_NUMBER_SELECTOR)]
+        candidates = numbered or instruments
+        if not candidates:
+            return None
+
+        tag = util.select_one(candidates[0], selector)
+        return tag.text.strip() or None if tag else None
 
     def _parse_masked_digits(self,
                              selector: str,
@@ -234,13 +252,25 @@ class Order(Parsable):
         if self.is_whole_foods:
             return self._parse_masked_digits(
                 self.config.selectors.FIELD_ORDER_WHOLE_FOODS_PAYMENT_LAST_4_SELECTOR, r"\*\s*(\d+)")
-        return self._parse_masked_digits(
+        value = self._parse_masked_digits(
             self.config.selectors.FIELD_ORDER_PAYMENT_METHOD_LAST_4_SELECTOR, r"ending in\s+(\d+)")
+        if value is None:
+            value = self._parse_payment_instrument_field(
+                self.config.selectors.FIELD_ORDER_PAYMENT_INSTRUMENT_NUMBER_SELECTOR)
+        return value
 
     def _parse_subtotal(self) -> Optional[float]:
         if self.is_whole_foods:
             return self._parse_whole_foods_amount(self.config.selectors.FIELD_ORDER_WHOLE_FOODS_SUBTOTAL_SELECTOR)
         return self._parse_currency("subtotal")
+
+    def _parse_shipping_total(self) -> Optional[float]:
+        value = self._parse_currency("shipping")
+        if value is None:
+            # British English label, e.g. "Postage & Packing" on amazon.de in English
+            value = self._parse_currency("postage")
+
+        return value
 
     def _parse_estimated_tax(self) -> Optional[float]:
         if self.is_whole_foods:
@@ -248,6 +278,9 @@ class Order(Parsable):
         value = self._parse_currency("estimated tax")
         if value is None:
             value = self._parse_currency("tax collected")
+        if value is None:
+            # e.g. amazon.de in English
+            value = self._parse_currency("estimated vat")
 
         return value
 

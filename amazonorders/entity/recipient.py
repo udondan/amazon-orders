@@ -2,10 +2,12 @@ __copyright__ = "Copyright (c) 2024-2025 Alex Laird"
 __license__ = "MIT"
 
 import logging
-from typing import Optional
+import re
+from typing import List, Optional
 
 from bs4 import Tag
 
+from amazonorders import util
 from amazonorders.conf import AmazonOrdersConfig
 from amazonorders.entity.parsable import Parsable
 
@@ -46,6 +48,16 @@ class Recipient(Parsable):
             ]
             value = "\n".join(filter(None, values))
         else:
-            value = self.simple_parse(self.config.selectors.FIELD_RECIPIENT_ADDRESS_FALLBACK_SELECTOR)
+            value = self._parse_address_lines() or self.simple_parse(
+                self.config.selectors.FIELD_RECIPIENT_ADDRESS_FALLBACK_SELECTOR)
 
         return value
+
+    def _parse_address_lines(self) -> Optional[str]:
+        lines: List[str] = []
+        for tag in util.select(self.parsed, self.config.selectors.FIELD_RECIPIENT_ADDRESS_LINES_SELECTOR):
+            # A list item may hold several lines separated by <br> or, when Amazon renders the address inline,
+            # by commas
+            lines.extend(line.strip() for line in re.split(r"[\n,]", tag.get_text("\n")) if line.strip())
+
+        return "\n".join(lines) or None

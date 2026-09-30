@@ -111,6 +111,35 @@ class TestConstants(UnitTestCase):
         self.assertEqual("https://www.amazon.co.jp", config.constants.BASE_URL)
         self.assertEqual("¥", config.constants.CURRENCY_SYMBOL)
 
+    def test_domain_de_requests_english_pages(self):
+        # GIVEN / WHEN
+        config = AmazonOrdersConfig(data={"domain": "amazon.de"})
+
+        # THEN
+        self.assertEqual("https://www.amazon.de", config.constants.BASE_URL)
+        self.assertEqual("€", config.constants.CURRENCY_SYMBOL)
+        self.assertTrue(config.constants.BASE_HEADERS["Accept-Language"].startswith("en-GB"))
+        self.assertEqual({"lc-acbde": "en_GB"}, config.constants.LANGUAGE_COOKIES)
+        self.assertEqual("https://www.amazon.de/payments-portal/data/iris/live/v1/data/manage/get-transactions",
+                         config.constants.TRANSACTION_HISTORY_API_URL)
+
+    def test_domain_com_sets_no_language_cookies(self):
+        # GIVEN / WHEN
+        config = AmazonOrdersConfig(data={"domain": "amazon.com"})
+
+        # THEN
+        self.assertEqual({}, config.constants.LANGUAGE_COOKIES)
+
+    def test_domain_does_not_override_constants_class_language_cookies(self):
+        # GIVEN / WHEN
+        config = AmazonOrdersConfig(data={
+            "constants_class": "tests.unit.test_constants.RegionOverrideConstants",
+            "domain": "amazon.de",
+        })
+
+        # THEN
+        self.assertEqual({"lc-acbde": "de_DE"}, config.constants.LANGUAGE_COOKIES)
+
     def test_format_currency_yen_without_decimals(self):
         # GIVEN
         constants = AmazonOrdersConfig(data={"domain": "amazon.co.jp"}).constants
@@ -205,3 +234,4 @@ class TestConstants(UnitTestCase):
 class RegionOverrideConstants(Constants):
     SIGN_IN_QUERY_PARAMS = dict(Constants.SIGN_IN_QUERY_PARAMS, **{"openid.assoc_handle": "customflex"})
     COOKIES_SET_WHEN_AUTHENTICATED = ["x-custom"]
+    LANGUAGE_COOKIES = {"lc-acbde": "de_DE"}

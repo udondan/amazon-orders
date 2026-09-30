@@ -189,6 +189,7 @@ class AmazonSession:
         if "headers" not in kwargs:
             kwargs["headers"] = {}
         kwargs["headers"].update(self.config.constants.BASE_HEADERS)
+        self._set_language_cookies()
 
         url_to_log = url
         if self.debug:
@@ -250,6 +251,14 @@ class AmazonSession:
         :return: The response from the executed request.
         """
         return self.request("POST", url, **kwargs)
+
+    def _set_language_cookies(self) -> None:
+        # Replace, rather than add to, any value Amazon or the persisted cookie jar already set (e.g. the site's
+        # default language), so only the requested one is sent
+        for name, value in self.config.constants.LANGUAGE_COOKIES.items():
+            for cookie in [cookie for cookie in self.session.cookies if cookie.name == name]:
+                self.session.cookies.clear(cookie.domain, cookie.path, cookie.name)
+            self.session.cookies.set(name, value)
 
     def auth_cookies_stored(self) -> bool:
         cookies = dict_from_cookiejar(self.session.cookies)

@@ -197,6 +197,9 @@ Known Limitations
       :class:`~amazonorders.constants.Constants` and set ``constants_class`` to override any value a
       particular site requires; an overridden ``assoc_handle`` or ``COOKIES_SET_WHEN_AUTHENTICATED`` is
       kept as-is. The ``AMAZON_BASE_URL`` environment variable continues to work as a fallback.
+    - ``amazon.de`` is requested in English (via ``Accept-Language`` and its ``lc-acbde`` language
+      cookie), so its pages are parsed like the other English sites, and its Next.js transactions page is
+      supported.
     - We do not run nightly regressions against non-``.com`` versions of the site, and as such do not say
       they are officially supported. If you fork the repo, point the ``integration.yml`` workflow at a
       different domain with your own credentials, please `contact us <mailto:contact@alexlaird.com>`_ and
