@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased](https://github.com/alexdlaird/amazon-orders/compare/5.2.0...HEAD)
 
+### Added
+
+- `Item.subscription_frequency`, the Subscribe & Save delivery frequency of an Item (e.g. "Every 2 months"), `None` if the Item is not part of a subscription. On some sites, e.g. `amazon.de`, the Order's Subscribe & Save discount is labeled "Promotion Applied", so this is the only way to tell a subscription delivery apart.
+
 ## [5.2.0](https://github.com/alexdlaird/amazon-orders/compare/5.1.0...5.2.0) - 2026-10-25
 
 ### Added
